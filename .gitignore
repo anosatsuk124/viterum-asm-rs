@@ -1,0 +1,5 @@
+/target
+/**/*.dump
+/c/main
+/asm/cc-asm
+/asm/gas

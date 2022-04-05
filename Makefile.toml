@@ -1,0 +1,82 @@
+[config]
+skip_core_tasks = true
+
+[env]
+CC = "gcc"
+OBJDUMP = "objdump -M intel"
+GAS_AS = "as"
+LINKER = "ld"
+
+
+C_DIR = "./c"
+C = "${C_DIR}/main"
+C_DUMP = "${C}.dump"
+C_SRC = "${C}.c"
+
+ASM_DIR = "./asm"
+ASM_SRC = "${ASM_DIR}/main.S"
+
+CC_ASM_DIR = "${ASM_DIR}/cc-asm"
+CC_ASM = "${CC_ASM_DIR}/main-cc-asm"
+CC_ASM_DUMP = "${CC_ASM}.dump"
+
+GAS_DIR = "${ASM_DIR}/gas"
+GAS = "${GAS_DIR}/main-gas"
+GAS_DUMP = "${GAS}.dump"
+GAS_O = "${GAS}.o"
+
+[tasks.mkdir]
+script = """
+    if [ ! -d "${@}" ]; then
+        mkdir "${@}"
+    fi
+"""
+
+[tasks.build-c]
+script = """
+    "$CC" -o "$C" "$C_SRC"
+"""
+
+[tasks.dump-c]
+script = """
+    $OBJDUMP -d "$C" > "$C_DUMP"
+"""
+dependencies = [ "build-c" ]
+
+[tasks.build-gas]
+script = """
+    makers mkdir "$GAS_DIR"
+    "$GAS_AS" -o "$GAS_O" "$ASM_SRC"
+    "$LINKER" -o "$GAS" "$GAS_O"
+"""
+
+[tasks.dump-gas]
+script = """
+    $OBJDUMP -d "$GAS" > "$GAS_DUMP"
+"""
+dependencies = [ "build-gas" ]
+
+[tasks.build-cc-asm]
+script = """
+    makers mkdir "$CC_ASM_DIR"
+    "$CC" -o "$CC_ASM" "$ASM_SRC"
+"""
+
+[tasks.dump-cc-asm]
+script = """
+    $OBJDUMP -d "$CC_ASM" > "$CC_ASM_DUMP"
+"""
+dependencies = [ "build-cc-asm"]
+
+[tasks.clean]
+script = """
+    rm -rf "$GAS_DIR" "$CC_ASM_DIR" "$C" "$C_DUMP"
+"""
+
+[tasks.dump-all]
+script = """
+    makers dump-c
+    makers dump-cc-asm
+    makers dump-gas
+"""
+dependencies = [ "clean" ]
