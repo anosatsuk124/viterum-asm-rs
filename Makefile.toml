@@ -39,7 +39,8 @@ script = """
 
 [tasks.dump-c]
 script = """
-    $OBJDUMP -d "$C" > "$C_DUMP"
+    $OBJDUMP -X "$C" > "$C_DUMP"
+    $OBJDUMP -D "$C" >> "$C_DUMP"
 """
 dependencies = [ "build-c" ]
 
@@ -52,7 +53,8 @@ script = """
 
 [tasks.dump-gas]
 script = """
-    $OBJDUMP -d "$GAS" > "$GAS_DUMP"
+    $OBJDUMP -x "$GAS_O" > "$GAS_DUMP"
+    $OBJDUMP -D "$GAS_O" >> "$GAS_DUMP"
 """
 dependencies = [ "build-gas" ]
 
@@ -64,7 +66,8 @@ script = """
 
 [tasks.dump-cc-asm]
 script = """
-    $OBJDUMP -d "$CC_ASM" > "$CC_ASM_DUMP"
+    $OBJDUMP -x "$CC_ASM" > "$CC_ASM_DUMP"
+    $OBJDUMP -D "$CC_ASM" >> "$CC_ASM_DUMP"
 """
 dependencies = [ "build-cc-asm"]
 
