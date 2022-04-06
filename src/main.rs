@@ -111,6 +111,46 @@ impl section_header {
     }
 }
 
+/*
+typedef struct {
+    uint32_t   p_type;
+    uint32_t   p_flags;
+    Elf64_Off  p_offset;
+    Elf64_Addr p_vaddr;
+    Elf64_Addr p_paddr;
+    uint64_t   p_filesz;
+    uint64_t   p_memsz;
+    uint64_t   p_align;
+} Elf64_Phdr;
+ */
+
+struct Elf64_Phdr {
+    p_type: u32,
+    p_flags: u32,
+    p_offset: u64,
+    p_vaddr: u64,
+    p_paddr: u64,
+    p_filesz: u64,
+    p_memsz: u64,
+    p_align: u64,
+}
+
+impl Elf64_Phdr {
+    fn to_vec(&self) -> Vec<u8> {
+        let mut vec = Vec::new();
+
+        vec.append(&mut self.p_type.to_le_bytes().to_vec());
+        vec.append(&mut self.p_flags.to_le_bytes().to_vec());
+        vec.append(&mut self.p_vaddr.to_le_bytes().to_vec());
+        vec.append(&mut self.p_paddr.to_le_bytes().to_vec());
+        vec.append(&mut self.p_filesz.to_le_bytes().to_vec());
+        vec.append(&mut self.p_memsz.to_le_bytes().to_vec());
+        vec.append(&mut self.p_align.to_le_bytes().to_vec());
+
+        vec
+    }
+}
+
 fn main() {
     let MAG: magic_numbers = magic_numbers {
         MAG0: 0x7f,
@@ -136,7 +176,7 @@ fn main() {
         e_verison: 0x1,
         e_entry: 0x0,
         e_phoff: 0x0,
-        e_shoff: 0x100,
+        e_shoff: 0x50,
         e_flags: 0x0,
         e_ehsize: 0x40,
         e_phentsize: 0x0,
@@ -146,20 +186,98 @@ fn main() {
         e_shstrndx: 0x6,
     };
 
-    let SEC: section_header = section_header {
-        sh_name: 0x0,
-        sh_type: 0x2,
-        sh_flags: 0x2,
-        sh_addr: 0x0,
-        sh_offset: 0x20,
-        sh_size: 0x0,
-        sh_link: 0x0,
-        sh_info: 0x0,
-        sh_addralign: 0x0,
-        sh_entsize: 0x0,
+    let zero_filled = section_header {
+        sh_name: 0x00,
+        sh_type: 0x00,
+        sh_flags: 0x00,
+        sh_addr: 0x00,
+        sh_offset: 0x00,
+        sh_size: 0x00,
+        sh_link: 0x00,
+        sh_info: 0x00,
+        sh_addralign: 0x01,
+        sh_entsize: 0x00,
     };
 
-    let data: [u8; 16] = [
+    let text: section_header = section_header {
+        sh_name: 0x01,
+        sh_type: 0x01,
+        sh_flags: 0x06,
+        sh_addr: 0x00,
+        sh_offset: 0x00,
+        sh_size: 0x10,
+        sh_link: 0x00,
+        sh_info: 0x00,
+        sh_addralign: 0x01,
+        sh_entsize: 0x00,
+    };
+
+    let data = section_header {
+        sh_name: 0x02,
+        sh_type: 0x01,
+        sh_size: 0x00,
+        sh_flags: 0x03,
+        sh_addr: 0x00,
+        sh_entsize: 0x00,
+        sh_offset: 0x50,
+        sh_info: 0x00,
+        sh_link: 0x00,
+        sh_addralign: 0x01,
+    };
+
+    let bss = section_header {
+        sh_name: 0x03,
+        sh_type: 0x08,
+        sh_size: 0x00,
+        sh_flags: 0x03,
+        sh_addr: 0x00,
+        sh_entsize: 0x00,
+        sh_offset: 0x50,
+        sh_info: 0x00,
+        sh_link: 0x00,
+        sh_addralign: 0x01,
+    };
+
+    let symtab = section_header {
+        sh_name: 0x04,
+        sh_type: 0x02,
+        sh_size: 0x78,
+        sh_flags: 0x00,
+        sh_addr: 0x00,
+        sh_entsize: 0x18,
+        sh_offset: 0x50,
+        sh_info: 0x04,
+        sh_link: 0x05,
+        sh_addralign: 0x08,
+    };
+
+    let strtab = section_header {
+        sh_name: 0x05,
+        sh_type: 0x03,
+        sh_size: 0x08,
+        sh_flags: 0x00,
+        sh_addr: 0x00,
+        sh_entsize: 0x00,
+        sh_offset: 0xc8,
+        sh_info: 0x00,
+        sh_link: 0x00,
+        sh_addralign: 0x01,
+    };
+
+    let shstrtab = section_header {
+        sh_name: 0x06,
+        sh_type: 0x03,
+        sh_size: 0x2c,
+        sh_flags: 0x00,
+        sh_addr: 0x00,
+        sh_entsize: 0x00,
+        sh_offset: 0xd0,
+        sh_info: 0x00,
+        sh_link: 0x00,
+        sh_addralign: 0x01,
+    };
+
+    let asm: [u8; 16] = [
         0x48, 0xc7, 0xc3, 0x0a, 0x00, 0x00, 0x00, 0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd,
         0x80,
     ];
@@ -215,7 +333,12 @@ fn main() {
 
     //f.write(&SEC.to_vec()).unwrap();
 
-    f.write(&data).unwrap();
-    f.write(&header).unwrap();
-    println!("{:?}", &HEADER.to_vec());
+    f.write(&asm).unwrap();
+    f.write(&zero_filled.to_vec()).unwrap();
+    f.write(&text.to_vec()).unwrap();
+    f.write(&data.to_vec()).unwrap();
+    f.write(&bss.to_vec()).unwrap();
+    f.write(&symtab.to_vec()).unwrap();
+    f.write(&strtab.to_vec()).unwrap();
+    f.write(&shstrtab.to_vec()).unwrap();
 }
