@@ -41,7 +41,7 @@ fn main() {
         0x00, 0x00, 0xcd, 0x80,
     ];
     let mut bin: Vec<u8> = Vec::new();
-    bin.append(&mut mov_value(OP_EAX, 1).to_vec());
+    //bin.append(&mut mov_value(OP_EAX, 1).to_vec());
     bin.append(&mut int(0x80).to_vec());
     // let asm = int(0x80);
 
