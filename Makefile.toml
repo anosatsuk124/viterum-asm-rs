@@ -25,6 +25,10 @@ GAS = "${GAS_DIR}/main-gas"
 GAS_DUMP = "${GAS}.dump"
 GAS_O = "${GAS}.o"
 
+GAS_PLAIN = "${GAS_DIR}/main-gas-plain"
+GAS_PLAIN_DUMP = "${GAS_PLAIN}.dump"
+GAS_PLAIN_O = "${GAS_PLAIN}.o"
+
 [tasks.mkdir]
 script = """
     if [ ! -d "${@}" ]; then
@@ -44,19 +48,32 @@ script = """
 """
 dependencies = [ "build-c" ]
 
-[tasks.build-gas]
+[tasks.build-gas-plain]
+script = """
+    makers mkdir "$GAS_DIR"
+    $GAS_AS -o "$GAS_PLAIN_O" "$ASM_SRC"
+    $LINKER --oformat binary -o "$GAS_PLAIN" $GAS_PLAIN_O
+"""
+
+[tasks.dump-gas-plain]
+script = """
+    hexdump -C -v $GAS_PLAIN > "$GAS_PLAIN_DUMP"
+"""
+dependencies = [ "build-gas-plain" ]
+
+[tasks.build-gas-elf]
 script = """
     makers mkdir "$GAS_DIR"
     "$GAS_AS" -o "$GAS_O" "$ASM_SRC"
     "$LINKER" -o "$GAS" "$GAS_O"
 """
 
-[tasks.dump-gas]
+[tasks.dump-gas-elf]
 script = """
     $OBJDUMP -x "$GAS_O" > "$GAS_DUMP"
     $OBJDUMP -D "$GAS_O" >> "$GAS_DUMP"
 """
-dependencies = [ "build-gas" ]
+dependencies = [ "build-gas-elf" ]
 
 [tasks.build-cc-asm]
 script = """

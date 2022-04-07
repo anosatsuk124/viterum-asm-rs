@@ -1,159 +1,13 @@
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::mem::size_of;
-
-#[derive(Debug)]
-struct magic_numbers {
-    MAG0: u8,
-    MAG1: u8,
-    MAG2: u8,
-    MAG3: u8,
-}
-
-impl magic_numbers {
-    fn as_slice(&self) -> [u8; 4] {
-        [self.MAG0, self.MAG1, self.MAG2, self.MAG3]
-    }
-}
-
-#[derive(Debug)]
-struct e_ident {
-    EI_MAG: magic_numbers,
-    EI_CLASS: u8,
-    EI_DATA: u8,
-    EI_VERSION: u8,
-    EI_OSABI: u8,
-    EI_ABIVERISON: u8,
-    EI_PAD: [u8; 7],
-}
-
-impl e_ident {
-    fn to_vec(&self) -> Vec<u8> {
-        let mags: Vec<u8> = self.EI_MAG.as_slice().to_vec();
-        let other: Vec<u8> = vec![
-            self.EI_CLASS,
-            self.EI_DATA,
-            self.EI_VERSION,
-            self.EI_OSABI,
-            self.EI_ABIVERISON,
-        ];
-        [mags, other, self.EI_PAD.to_vec()].concat()
-    }
-}
-
-#[derive(Debug)]
-struct elf64_header {
-    ident: e_ident,
-    e_type: u16,
-    e_machine: u16,
-    e_verison: u32,
-    e_entry: u64, // if 32bit, [u8;4]
-    e_phoff: u64, // same as above
-    e_shoff: u64, // same as above
-    e_flags: u32,
-    e_ehsize: u16,
-    e_phentsize: u16,
-    e_phnum: u16,
-    e_shentsize: u16,
-    e_shnum: u16,
-    e_shstrndx: u16,
-}
-
-impl elf64_header {
-    fn to_vec(&self) -> Vec<u8> {
-        let mut vec = Vec::new();
-        vec.append(&mut self.ident.to_vec());
-        vec.append(&mut self.e_type.to_le_bytes().to_vec());
-        vec.append(&mut self.e_machine.to_le_bytes().to_vec());
-        vec.append(&mut self.e_verison.to_le_bytes().to_vec());
-        vec.append(&mut self.e_entry.to_le_bytes().to_vec());
-        vec.append(&mut self.e_phoff.to_le_bytes().to_vec());
-        vec.append(&mut self.e_shoff.to_le_bytes().to_vec());
-        vec.append(&mut self.e_flags.to_be_bytes().to_vec());
-        vec.append(&mut self.e_ehsize.to_le_bytes().to_vec());
-        vec.append(&mut self.e_phentsize.to_le_bytes().to_vec());
-        vec.append(&mut self.e_phnum.to_le_bytes().to_vec());
-        vec.append(&mut self.e_shentsize.to_le_bytes().to_vec());
-        vec.append(&mut self.e_shnum.to_le_bytes().to_vec());
-        vec.append(&mut self.e_shstrndx.to_le_bytes().to_vec());
-
-        vec
-    }
-}
-
-struct section_header {
-    sh_name: u32,
-    sh_type: u32,
-    sh_flags: u64,
-    sh_addr: u64,
-    sh_offset: u64,
-    sh_size: u64,
-    sh_link: u32,
-    sh_info: u32,
-    sh_addralign: u64,
-    sh_entsize: u64,
-}
-
-impl section_header {
-    fn to_vec(&self) -> Vec<u8> {
-        let mut vec = Vec::new();
-        vec.append(&mut self.sh_name.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_type.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_flags.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_addr.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_offset.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_size.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_link.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_info.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_addralign.to_le_bytes().to_vec());
-        vec.append(&mut self.sh_entsize.to_le_bytes().to_vec());
-
-        vec
-    }
-}
-
-/*
-typedef struct {
-    uint32_t   p_type;
-    uint32_t   p_flags;
-    Elf64_Off  p_offset;
-    Elf64_Addr p_vaddr;
-    Elf64_Addr p_paddr;
-    uint64_t   p_filesz;
-    uint64_t   p_memsz;
-    uint64_t   p_align;
-} Elf64_Phdr;
- */
-
-struct Elf64_Phdr {
-    p_type: u32,
-    p_flags: u32,
-    p_offset: u64,
-    p_vaddr: u64,
-    p_paddr: u64,
-    p_filesz: u64,
-    p_memsz: u64,
-    p_align: u64,
-}
-
-impl Elf64_Phdr {
-    fn to_vec(&self) -> Vec<u8> {
-        let mut vec = Vec::new();
-
-        vec.append(&mut self.p_type.to_le_bytes().to_vec());
-        vec.append(&mut self.p_flags.to_le_bytes().to_vec());
-        vec.append(&mut self.p_vaddr.to_le_bytes().to_vec());
-        vec.append(&mut self.p_paddr.to_le_bytes().to_vec());
-        vec.append(&mut self.p_filesz.to_le_bytes().to_vec());
-        vec.append(&mut self.p_memsz.to_le_bytes().to_vec());
-        vec.append(&mut self.p_align.to_le_bytes().to_vec());
-
-        vec
-    }
-}
+mod header;
+mod opcode;
+use crate::header::*;
+use crate::opcode::*;
 
 fn main() {
-    let MAG: magic_numbers = magic_numbers {
+    let MAG = magic_numbers {
         MAG0: 0x7f,
         MAG1: 0x45,
         MAG2: 0x4c,
@@ -277,6 +131,14 @@ fn main() {
         0xf8, 0x50, 0x58, 0x48, 0x89, 0xec, 0x5d, 0x48, 0x89, 0xc3, 0x48, 0xc7, 0xc0, 0x01, 0x00,
         0x00, 0x00, 0xcd, 0x80,
     ];
+    let bin = [0xcd, 0x80];
+    // let asm = int(0x80);
+    let mut asm_fill_zero: Vec<u8> = Vec::new();
+
+    for _ in 0..(asm.len() - bin.len() + 4) {
+        asm_fill_zero.push(0x00);
+    }
+
     let shoff = size_of::<section_header>() + asm.len() + 178;
 
     let HEADER: elf64_header = elf64_header {
@@ -391,9 +253,10 @@ fn main() {
 
     //f.write(&SEC.to_vec()).unwrap();
 
-    f.write(&asm).unwrap();
+    // f.write(&asm).unwrap();
+    f.write(&bin).unwrap();
+    f.write(&asm_fill_zero).unwrap();
     f.write(&section).unwrap();
-    println!("{}", shoff);
     // f.write(&zero_filled.to_vec()).unwrap();
     // f.write(&text.to_vec()).unwrap();
     // f.write(&data.to_vec()).unwrap();
